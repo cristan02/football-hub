@@ -2,90 +2,19 @@
 
 ## Overview
 
-The homepage performs simple counting operations across all major collections to display real-time statistics.
+The homepage is a **static page** with no database queries. It displays navigation cards and technology stack information without making any API calls.
 
 ---
 
-## Query #1: Count Total Clubs
+## Query Status
 
-**Purpose**: Get total number of clubs in database
+**❌ No Database Queries Used**
 
-**MongoDB Query**:
+The homepage (`app/page.tsx`) is a static Next.js page that renders:
 
-```
-db.clubs.countDocuments()
-```
-
-**Expected Output**: `50`
-
----
-
-## Query #2: Count Total Players
-
-**Purpose**: Get total number of players in database
-
-**MongoDB Query**:
-
-```
-db.players.countDocuments()
-```
-
-**Expected Output**: `1250`
-
----
-
-## Query #3: Count Total Matches
-
-**Purpose**: Get total number of matches in database
-
-**MongoDB Query**:
-
-```
-db.matches.countDocuments()
-```
-
-**Expected Output**: `380`
-
----
-
-## Query #4: Count Total Transfers
-
-**Purpose**: Get total number of transfers in database
-
-**MongoDB Query**:
-
-```
-db.transfers.countDocuments()
-```
-
-**Expected Output**: `245`
-
----
-
-## Query #5: Get Database Statistics
-
-**Purpose**: Retrieve comprehensive database statistics
-
-**MongoDB Query**:
-
-```
-db.runCommand({dbStats: 1})
-```
-
----
-
-## Query #6: Collection Statistics
-
-**Purpose**: Get detailed statistics for each collection
-
-**MongoDB Queries**:
-
-```
-db.clubs.stats()
-db.players.stats()
-db.matches.stats()
-db.transfers.stats()
-```
+- Navigation cards to other features
+- Technology stack information
+- Static hero content
 
 ---
 

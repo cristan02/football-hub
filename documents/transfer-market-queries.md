@@ -2,13 +2,13 @@
 
 ## Overview
 
-Comprehensive transfer market analysis with real-world financial data using complex multi-collection joins.
+Transfer market analysis with 3 specific datasets consumed by the frontend: transfers list, transfer analytics by position, and expensive transfers.
 
 ---
 
-## Query #1: Highest Transfer Fees
+## Query #1: Transfers with Full Player and Club Details
 
-**Purpose**: Get transfers with highest fees including player and club details
+**Purpose**: Get all transfers with player and club information (consumed by frontend transfers table)
 
 **MongoDB Query**:
 
@@ -18,50 +18,40 @@ db.transfers.aggregate([
     $lookup: {
       from: "players",
       localField: "playerID",
-      foreignField: "_id",
-      as: "playerDetails"
+      foreignField: "playerID",
+      as: "player"
     }
   },
+  { $unwind: "$player" },
   {
     $lookup: {
       from: "clubs",
       localField: "fromClubID",
-      foreignField: "_id",
+      foreignField: "clubID",
       as: "fromClub"
     }
   },
+  { $unwind: "$fromClub" },
   {
     $lookup: {
       from: "clubs",
       localField: "toClubID",
-      foreignField: "_id",
+      foreignField: "clubID",
       as: "toClub"
     }
   },
-  {
-    $sort: { transferFee: -1 }
-  },
-  {
-    $limit: 10
-  },
-  {
-    $project: {
-      playerName: { $arrayElemAt: ["$playerDetails.name", 0] },
-      transferFee: 1,
-      date: 1,
-      fromClubName: { $arrayElemAt: ["$fromClub.name", 0] },
-      toClubName: { $arrayElemAt: ["$toClub.name", 0] },
-      position: { $arrayElemAt: ["$playerDetails.position", 0] }
-    }
-  }
+  { $unwind: "$toClub" },
+  { $sort: { date: -1 } }
 ])
 ```
 
+**Frontend Usage**: Transfer history table with player names, clubs, and transfer details
+
 ---
 
-## Query #2: Transfer Market by Position
+## Query #2: Transfer Analytics by Position
 
-**Purpose**: Analyze transfer patterns and average fees by player position
+**Purpose**: Analyze transfer market by player position (consumed by frontend position analytics cards)
 
 **MongoDB Query**:
 
@@ -71,180 +61,31 @@ db.transfers.aggregate([
     $lookup: {
       from: "players",
       localField: "playerID",
-      foreignField: "_id",
-      as: "playerDetails"
+      foreignField: "playerID",
+      as: "player"
     }
   },
+  { $unwind: "$player" },
   {
     $group: {
-      _id: { $arrayElemAt: ["$playerDetails.position", 0] },
+      _id: "$player.position",
       avgTransferFee: { $avg: "$transferFee" },
       totalTransfers: { $sum: 1 },
       maxTransferFee: { $max: "$transferFee" },
       totalMarketValue: { $sum: "$transferFee" }
     }
   },
-  {
-    $sort: { avgTransferFee: -1 }
-  }
+  { $sort: { avgTransferFee: -1 } }
 ])
 ```
 
----
-
-## Query #3: Transfer Windows Analysis
-
-**Purpose**: Categorize transfers by transfer windows (Summer/Winter)
-
-**MongoDB Query**:
-
-```
-db.transfers.aggregate([
-  {
-    $addFields: {
-      transferWindow: {
-        $switch: {
-          branches: [
-            {
-              case: { $lte: [{ $month: "$date" }, 2] },
-              then: "Winter"
-            },
-            {
-              case: { $lte: [{ $month: "$date" }, 8] },
-              then: "Summer"
-            },
-            {
-              case: { $lte: [{ $month: "$date" }, 12] },
-              then: "Winter"
-            }
-          ]
-        }
-      },
-      year: { $year: "$date" }
-    }
-  },
-  {
-    $group: {
-      _id: {
-        window: "$transferWindow",
-        year: "$year"
-      },
-      transferCount: { $sum: 1 },
-      totalValue: { $sum: "$transferFee" },
-      avgValue: { $avg: "$transferFee" }
-    }
-  },
-  {
-    $sort: { "_id.year": -1, "_id.window": 1 }
-  }
-])
-```
+**Frontend Usage**: Position-based transfer market analysis cards
 
 ---
 
-## Query #4: Most Active Clubs in Transfer Market
+## Query #3: Most Expensive Transfers
 
-**Purpose**: Identify clubs with highest transfer activity (buying and selling)
-
-**MongoDB Query**:
-
-```
-db.transfers.aggregate([
-  {
-    $lookup: {
-      from: "clubs",
-      localField: "toClubID",
-      foreignField: "_id",
-      as: "buyingClub"
-    }
-  },
-  {
-    $group: {
-      _id: "$toClubID",
-      clubName: { $first: { $arrayElemAt: ["$buyingClub.name", 0] } },
-      totalPurchases: { $sum: 1 },
-      totalSpent: { $sum: "$transferFee" },
-      avgPurchasePrice: { $avg: "$transferFee" },
-      biggestSigning: { $max: "$transferFee" }
-    }
-  },
-  {
-    $sort: { totalSpent: -1 }
-  },
-  {
-    $limit: 15
-  }
-])
-```
-
----
-
-## Query #5: Transfer Fee Trends by Year
-
-**Purpose**: Analyze transfer market inflation and trends over years
-
-**MongoDB Query**:
-
-```
-db.transfers.aggregate([
-  {
-    $addFields: {
-      year: { $year: "$date" }
-    }
-  },
-  {
-    $group: {
-      _id: "$year",
-      transferCount: { $sum: 1 },
-      totalMarketValue: { $sum: "$transferFee" },
-      avgTransferFee: { $avg: "$transferFee" },
-      maxTransferFee: { $max: "$transferFee" },
-      minTransferFee: { $min: "$transferFee" }
-    }
-  },
-  {
-    $sort: { _id: -1 }
-  }
-])
-```
-
----
-
-## Query #6: Free Transfers vs Paid Transfers
-
-**Purpose**: Compare free transfers with paid transfers
-
-**MongoDB Query**:
-
-```
-db.transfers.aggregate([
-  {
-    $addFields: {
-      transferType: {
-        $cond: {
-          if: { $eq: ["$transferFee", 0] },
-          then: "Free Transfer",
-          else: "Paid Transfer"
-        }
-      }
-    }
-  },
-  {
-    $group: {
-      _id: "$transferType",
-      count: { $sum: 1 },
-      avgFee: { $avg: "$transferFee" },
-      totalValue: { $sum: "$transferFee" }
-    }
-  }
-])
-```
-
----
-
-## Query #7: Player Transfer History
-
-**Purpose**: Get complete transfer history for a specific player
+**Purpose**: Get top 3 highest value transfers (consumed by frontend expensive transfers showcase)
 
 **MongoDB Query**:
 
@@ -254,79 +95,47 @@ db.transfers.aggregate([
     $lookup: {
       from: "players",
       localField: "playerID",
-      foreignField: "_id",
-      as: "playerDetails"
+      foreignField: "playerID",
+      as: "player"
     }
   },
-  {
-    $match: {
-      "playerDetails.name": "Lionel Messi"
-    }
-  },
+  { $unwind: "$player" },
   {
     $lookup: {
       from: "clubs",
       localField: "fromClubID",
-      foreignField: "_id",
+      foreignField: "clubID",
       as: "fromClub"
     }
   },
+  { $unwind: "$fromClub" },
   {
     $lookup: {
       from: "clubs",
       localField: "toClubID",
-      foreignField: "_id",
+      foreignField: "clubID",
       as: "toClub"
     }
   },
-  {
-    $sort: { date: 1 }
-  },
+  { $unwind: "$toClub" },
+  { $sort: { transferFee: -1 } },
+  { $limit: 3 },
   {
     $project: {
-      date: 1,
+      playerName: "$player.name",
+      position: "$player.position",
       transferFee: 1,
-      fromClubName: { $arrayElemAt: ["$fromClub.name", 0] },
-      toClubName: { $arrayElemAt: ["$toClub.name", 0] },
-      playerName: { $arrayElemAt: ["$playerDetails.name", 0] }
+      fromClub: "$fromClub.clubName",
+      toClub: "$toClub.clubName",
+      fromLeague: "$fromClub.league",
+      toLeague: "$toClub.league",
+      date: 1,
+      contractYears: 1
     }
   }
 ])
 ```
 
----
-
-## Query #8: Record Transfer by Position
-
-**Purpose**: Find highest transfer fee for each position
-
-**MongoDB Query**:
-
-```
-db.transfers.aggregate([
-  {
-    $lookup: {
-      from: "players",
-      localField: "playerID",
-      foreignField: "_id",
-      as: "playerDetails"
-    }
-  },
-  {
-    $sort: { transferFee: -1 }
-  },
-  {
-    $group: {
-      _id: { $arrayElemAt: ["$playerDetails.position", 0] },
-      recordFee: { $first: "$transferFee" },
-      playerName: { $first: { $arrayElemAt: ["$playerDetails.name", 0] } },
-      date: { $first: "$date" }
-    }
-  },
-  {
-    $sort: { recordFee: -1 }
-  }
-])
-```
+**Frontend Usage**: Expensive transfers highlight cards
 
 ---
