@@ -4,7 +4,10 @@ export default async function TransfersPage() {
     let expensiveTransfers = [];
 
     try {
-        const res = await fetch('http://localhost:3000/api/transfers', { next: { revalidate: 0 } });
+        const baseUrl = process.env.NODE_ENV === 'production'
+            ? process.env.NEXT_PUBLIC_SITE_URL || 'https://your-app.vercel.app'
+            : 'http://localhost:3000';
+        const res = await fetch(`${baseUrl}/api/transfers`, { next: { revalidate: 0 } });
         const data = await res.json();
         transfers = data.transfers || [];
         transferAnalytics = data.transferAnalytics || [];
