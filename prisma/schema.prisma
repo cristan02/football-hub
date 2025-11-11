@@ -1,0 +1,100 @@
+// prisma/schema.prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+model Club {
+  id            String    @id @default(auto()) @map("_id") @db.ObjectId
+  clubID        String    @unique
+  clubName      String
+  founded       Int
+  stadium       String
+  capacity      Int
+  manager       String
+  budget        Float
+  league        String
+  
+  players       Player[]
+  homeMatches   Match[]   @relation("HomeClub")
+  awayMatches   Match[]   @relation("AwayClub")
+  transfersFrom Transfer[] @relation("FromClub")
+  transfersTo   Transfer[] @relation("ToClub")
+  staff         Staff[]
+  
+  @@map("clubs")
+}
+
+model Player {
+  id            String    @id @default(auto()) @map("_id") @db.ObjectId
+  playerID      String    @unique
+  name          String
+  age           Int
+  position      String
+  nationality   String
+  jerseyNumber  Int
+  salary        Float
+  goals         Int
+  assists       Int
+  matchesPlayed Int
+  clubID        String
+  
+  club          Club      @relation(fields: [clubID], references: [clubID])
+  transfers     Transfer[]
+  
+  @@map("players")
+}
+
+model Match {
+  id            String    @id @default(auto()) @map("_id") @db.ObjectId
+  matchID       String    @unique
+  homeClubID    String
+  awayClubID    String
+  date          DateTime
+  homeScore     Int
+  awayScore     Int
+  stadium       String
+  attendance    Int
+  referee       String
+  
+  homeClub      Club      @relation("HomeClub", fields: [homeClubID], references: [clubID])
+  awayClub      Club      @relation("AwayClub", fields: [awayClubID], references: [clubID])
+  
+  @@map("matches")
+}
+
+model Transfer {
+  id            String    @id @default(auto()) @map("_id") @db.ObjectId
+  transferID    String    @unique
+  playerID      String
+  fromClubID    String
+  toClubID      String
+  transferFee   Float
+  date          DateTime
+  contractYears Int
+  
+  player        Player    @relation(fields: [playerID], references: [playerID])
+  fromClub      Club      @relation("FromClub", fields: [fromClubID], references: [clubID])
+  toClub        Club      @relation("ToClub", fields: [toClubID], references: [clubID])
+  
+  @@map("transfers")
+}
+
+model Staff {
+  id                String    @id @default(auto()) @map("_id") @db.ObjectId
+  staffID           String    @unique
+  name              String
+  role              String
+  clubID            String
+  salary            Float
+  yearsOfExperience Int
+  
+  club              Club      @relation(fields: [clubID], references: [clubID])
+  
+  @@map("staff")
+}
